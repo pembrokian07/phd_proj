@@ -38,7 +38,7 @@ void test(){
 int main(int argc, const char * argv[]) {
     time_t t1 = 0;
     time_t t2 = 0;
-    string dir = "/Users/kevinliu/temp/CarNumericsData/";
+    string dir = "/Users/kevinliu/temp/CarNumericsData2/";
     
     //test();
     
@@ -46,7 +46,7 @@ int main(int argc, const char * argv[]) {
     t1 = time(0);
     int m = 100;
     int n = 100;
-    int T = 100;
+    int T = 10;
     
     Solver s(m, n, T, 1.0f/10, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,(float) -1.0f, 0.0f, 0.0f, 0.0f);
     fmat psi(m, n);

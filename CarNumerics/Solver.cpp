@@ -85,17 +85,11 @@ void Solver::save()
     _b->save("/Users/kevinliu/Documents/cpp_proj/CarNumerics/CarNumerics/b.csv", csv_ascii);
 }
 
-float Solver::df_dr(int j, int s)
-{
-    float alpha = (j+1)*_da;
-    return cosf(alpha)*_theta1->at(s) + sinf(alpha)*_theta2->at(s);
-}
-
-float Solver::df_da(int i, int j, int s)
+float Solver::df_dx(int i, int j, int s)
 {
     float alpha = p_j(j+1)*_da;
-    float r = (i+1)*_dr;
-    return r*(cosf(alpha)*_theta2->at(s) - sinf(alpha)*_theta1->at(s));
+    
+    return 2*(i+1)*_dr*cosf(alpha) + _theta1->at(s);
 }
 
 // round angle index between d_alpha and 2*pi
@@ -123,7 +117,7 @@ void Solver::populate_inner(int s)
     {
         for(int j=0; j<_n; j++)
         {
-            this->_set_inner_eqns(i,j, s);
+            this->_set_inner_eqns(i,j,s);
         }
     }
 }
@@ -151,7 +145,7 @@ void Solver::_set_inner_eqns(int i, int j, int s)
     (*_A)(k,(i-1)*_n+ p_j(j+1)) = c3/(4.0f*(i+1));
     (*_A)(k,(i-1)*_n+ p_j(j-1)) = -c3/(4.0f*(i+1));
 
-    (*_b)(k) = -powf(_dr, 2.0f)*_theta1->at(s);
+    (*_b)(k) = -powf(_dr, 2.0f)*df_dx(i, j, s);
 }
 
 void Solver::populate_neumann()
@@ -219,7 +213,7 @@ void Solver::populate_origin(int s)
         (*_A)(j,p_j(j-1)) = c2*inv_da2 - 5.0f/6*c3;
         (*_A)(j,p_j(j+1)) = c2*inv_da2 + 5.0f/6*c3;
 
-        (*_b)(j) = -powf(_dr, 2.0f)*_theta1->at(s);
+        (*_b)(j) = -powf(_dr, 2.0f)*df_dx(0, j, s);
     }
 }
 
@@ -339,7 +333,7 @@ fmat Solver::compute_theta1_integrand(fmat& pressure)
 {
     fmat row_a = conv_to<fmat>::from(linspace(_da, 2.0f*M_PI, _n)).transform([](float val) { return (cosf(val));}).t();
     fmat col_r = conv_to<fmat>::from(linspace(_dr, _R, _m));
-    fmat integrad = col_r*row_a;
+    fmat integrad = col_r*row_a - _x_c;
     
     // element-wise multiplication
     return integrad%pressure;

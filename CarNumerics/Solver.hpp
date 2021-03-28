@@ -31,8 +31,7 @@ public:
     Solver(int m, int n, int t, float dt, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
     ~Solver();
     void reset();
-    float df_dr(int j, int s);
-    float df_da(int i, int j, int s);
+    float df_dx(int i, int j, int s);
     void save();
     
     fmat solve_psi();
@@ -68,6 +67,8 @@ private:
     const float _R = 1.0f;
     const float _P = 1.0f;
     const float _inv_P2 = powf(_P, -2.0f);
+    const float _x_c = 0.0f;
+    const float _y_c = 0.0f;
     float _M;
     float _I1;
     float _I2;
