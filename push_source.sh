@@ -1,3 +1,3 @@
 #!/bin/bash
-cp ~/Documents/codebase/phd_proj/CarNumerics/*.?pp ~/Documents/cpp_proj/CarNumerics/CarNumerics/
+cp ~/Documents/git_base/phd_proj/CarNumerics/*.?pp ~/Documents/cpp_proj/CarNumerics/CarNumerics/
 
