@@ -1,6 +1,5 @@
 //
 //  Solver.hpp
-//  CarNumerics
 //
 //  Created by Kevin Liu on 08/11/2020.
 //
@@ -28,7 +27,7 @@ using namespace arma;
 class Solver
 {
 public:
-    Solver(int m, int n, int t, float dt, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
+    Solver(int m, int n, int t, float dt, float q, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
     ~Solver();
     void reset();
     float df_dx(int i, int j, int s);
@@ -39,9 +38,11 @@ public:
     float approx_df_dr(fmat& f, int i, int j);
     float approx_df_da(fmat& f, int i, int j);
     fmat solve_pressure(fmat& psi);
+    fmat solve_velocity_u(fmat& psi);
+    fmat solve_velocity_v(fmat& psi);
     float double_integral(fmat& f);
     
-    void solve_var(float force, int s, fvec& vars);
+    void solve_var(float force, int s, float mass, fvec& vars);
     void const save_h(std::string file_name);
     fmat compute_theta1_integrand(fmat& pressure);
     void const save_theta1(std::string file_name);
@@ -65,10 +66,10 @@ public:
     
 private:
     const float _R = 1.0f;
-    const float _P = 1.0f;
-    const float _inv_P2 = powf(_P, -2.0f);
     const float _x_c = 0.0f;
     const float _y_c = 0.0f;
+    float _P;
+    float _inv_P2;
     float _M;
     float _I1;
     float _I2;

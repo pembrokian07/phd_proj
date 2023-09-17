@@ -1,6 +1,5 @@
 //
 //  Solver.cpp
-//  CarNumerics
 //
 //  Created by Kevin Liu on 08/11/2020.
 //
@@ -9,11 +8,27 @@
 
 using namespace arma;
 
-Solver::Solver(int m, int n, int t, float dt, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2)
+/*
+ Initialises the elliptical grid and starting values of our numerical system.
+ 
+ @param m: no. of discretisation points for radius R in elliptical coordinates
+ @param n: no. of discretisation points for theta in elliptical coordinates
+ @param t, dt: time and time discretisation step size
+ @param q: ratio of the ellipse domain's two axes q = B/A (see eqn 30)
+ @param M: scaled body mass
+ @param I1, I2: scaled moments of inertia w.r.t. theta1, theta2
+ @param h0: starting vertical height of the body
+ @param v0: starting vertical velocity of the body
+ @param theta1, d_theta1: starting value of theta1 and its angular velocity
+ @param theta2, d_theta2: starting value of theta2 and its angular velocity
+ */
+Solver::Solver(int m, int n, int t, float dt, float q, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2)
     :_m(m),_n(n),_t(t),_dt(dt),_M(M),_I1(I1), _I2(I2)
 {
     _dr = _R/_m;
     _da = (float) (2.0f*M_PI/_n);
+    _P = q;
+    _inv_P2 = powf(_P, -2.0f);
     
     // number of unknowns to solve
     _neumann_indice_count = (int)round(_n/2.0f)-1;
@@ -62,54 +77,9 @@ void Solver::reset()
     _b->zeros();
 }
 
-void Solver::save_neumann_indices(std::string fileName)
-{
-    vec indices(_neumann_indice_count);
-    int k = 0;
-    for(int i: _neumann_indices)
-    {
-        indices(k++) = i;
-    }
-    indices.save(fileName, csv_ascii);
-}
-
-void Solver::print()
-{
-    _A->print("A:");
-    _b->t().print("b:");
-}
-
-void Solver::save()
-{
-    _A->save("/Users/kevinliu/Documents/cpp_proj/CarNumerics/CarNumerics/A.csv", csv_ascii);
-    _b->save("/Users/kevinliu/Documents/cpp_proj/CarNumerics/CarNumerics/b.csv", csv_ascii);
-}
-
-float Solver::df_dx(int i, int j, int s)
-{
-    float alpha = p_j(j+1)*_da;
-    
-    return 2*(i+1)*_dr*cosf(alpha) + _theta1->at(s);
-}
-
-// round angle index between d_alpha and 2*pi
-int Solver::p_j(int j)
-{
-    int res = j;
-    
-    if(j<0)
-    {
-        res = j + _n;
-    }
-    // if we have exceeded 2pi, reset it according to periodicity
-    else if(j>=_n)
-    {
-        res = j - _n;
-    }
-        
-    return res;
-}
-
+/*
+ Eqn 32
+ */
 void Solver::populate_inner(int s)
 {
     // populate the full circles for r in [2*dr, (m-2)*dr]
@@ -148,6 +118,9 @@ void Solver::_set_inner_eqns(int i, int j, int s)
     (*_b)(k) = -powf(_dr, 2.0f)*df_dx(i, j, s);
 }
 
+/*
+ Populate nuemann B.C. eqn 34.
+ */
 void Solver::populate_neumann()
 {
     // fill the values for r = M*dr
@@ -174,7 +147,10 @@ void Solver::populate_neumann()
     }
 }
 
-// for i = M-1 (as i = M is given) and j*_da in [pi/2, 3*pi/2]
+/*
+ Code in the dirichlet condition in eqn 33
+ for i = M-1 (as i = M is given) and j*_da in [pi/2, 3*pi/2]
+ */
 void Solver::populate_dirichlet()
 {
     for(auto j: _dirichlet_indices)
@@ -188,6 +164,11 @@ void Solver::populate_dirichlet()
     }
 }
 
+/*
+ Discretisation of the inner most curve, eqn 37.
+ 
+ @param s: time step index
+ */
 void Solver::populate_origin(int s)
 {
     float inv_da2 = powf(_da, -2.0f);
@@ -217,6 +198,45 @@ void Solver::populate_origin(int s)
     }
 }
 
+/*
+ 1st order derivative of the body function 'f' w.r.t. x.
+ Note: This method needs to be coded explicitly for each body shape 'f'.
+ 
+ @param i: index of elliptical coordinate where i*dr = r
+ @param j: index of elliptical coordinate where j*d_a = a
+ @param s: time step index, i.e. theta_1(s) if the body function 'f' depends on theta_1.
+ */
+float Solver::df_dx(int i, int j, int s)
+{
+    float alpha = p_j(j+1)*_da;
+    float a = (i+1)*_dr;
+    float x = a*cosf(alpha);
+    float y = _P*a*sinf(alpha);
+    return 2*x+ _theta1->at(s);
+}
+
+// round angle index between d_alpha and 2*pi
+int Solver::p_j(int j)
+{
+    int res = j;
+    
+    if(j<0)
+    {
+        res = j + _n;
+    }
+    // if we have exceeded 2pi, reset it according to periodicity
+    else if(j>=_n)
+    {
+        res = j - _n;
+    }
+        
+    return res;
+}
+
+/*
+ Populates the finite difference matrix, the R.H.S. of eqn (38).
+ @param s: time step index
+ */
 void Solver::populate_psi_grid(int s)
 {
     this->populate_origin(s);
@@ -225,6 +245,9 @@ void Solver::populate_psi_grid(int s)
     this->populate_dirichlet();
 }
 
+/*
+ Solves eqn 38 to obtain psi
+ */
 fmat Solver::solve_psi()
 {
     fvec x(_b->n_rows);
@@ -234,6 +257,9 @@ fmat Solver::solve_psi()
     return y.t();
 }
 
+/*
+ solves psi at the origin, i.e. psi_0
+ */
 fvec Solver::solve_origin(fmat& psi)
 {
     fvec x(_n);
@@ -246,6 +272,27 @@ fvec Solver::solve_origin(fmat& psi)
     return x;
 }
 
+/*
+ Solves for pressure in eqn 15 in ellipitcal form
+ */
+fmat Solver::solve_pressure(fmat& psi)
+{
+    fmat pressure(size(psi));
+    for(int i=0; i<_m; i++)
+    {
+        for(int j=0; j<_n; j++)
+        {
+            float alpha = (j+1)*_da;
+            pressure(i,j) = -approx_df_dr(psi, i, j)*cosf(alpha) + approx_df_da(psi, i, j)*sinf(alpha)/((i+1)*_dr);
+        }
+    }
+    return pressure;
+}
+
+/*
+ Estimates the derivative of a given variable 'f' (i.e. psi) w.r.t. r
+ This 'f' is not to be confused with body function 'f', it's just unfortunate naming.
+ */
 float Solver::approx_df_dr(fmat& f, int i, int j)
 {
     float df_dr = 0.f;
@@ -267,6 +314,11 @@ float Solver::approx_df_dr(fmat& f, int i, int j)
     return df_dr;
 }
 
+/*
+ estimates the derivative of a given variable 'f' (i.e. psi) w.r.t. theta
+ This 'f' is not to be confused with body function 'f', it's just unfortunate naming.
+ */
+
 float Solver::approx_df_da(fmat& f, int i, int j)
 {
     float df_da = 0.f;
@@ -276,21 +328,37 @@ float Solver::approx_df_da(fmat& f, int i, int j)
     return df_da;
 }
 
-fmat Solver::solve_pressure(fmat& psi)
+fmat Solver::solve_velocity_u(fmat& psi)
 {
-    fmat pressure(size(psi));
+    fmat u(size(psi));
     for(int i=0; i<_m; i++)
     {
         for(int j=0; j<_n; j++)
         {
             float alpha = (j+1)*_da;
-            pressure(i,j) = -approx_df_dr(psi, i, j)*cosf(alpha) + approx_df_da(psi, i, j)*sinf(alpha)/((i+1)*_dr);
+            u(i,j) = approx_df_dr(psi, i, j)*cosf(alpha) - approx_df_da(psi, i, j)*sinf(alpha)/((i+1)*_dr);
         }
     }
-    return pressure;
+    return u;
 }
 
+fmat Solver::solve_velocity_v(fmat& psi)
+{
+    fmat v(size(psi));
+    for(int i=0; i<_m; i++)
+    {
+        for(int j=0; j<_n; j++)
+        {
+            float alpha = (j+1)*_da;
+            v(i,j) = approx_df_dr(psi, i, j)*sinf(alpha) + approx_df_da(psi, i, j)*cosf(alpha)/((i+1)*_dr);
+        }
+    }
+    return v;
+}
 
+/*
+ A helper function used for the numerical integration of the L.H.S. of eqns 17
+ */
 float Solver::double_integral(fmat& f)
 {
     fvec int_alpha = _integrate_alpha(f);
@@ -314,9 +382,48 @@ fvec Solver::_integrate_alpha(fmat& f)
     return int_alpha;
 }
 
-void Solver::solve_var(float force, int s, fvec& vars)
+/*
+ Solves the 2nd order derivative in the R.H.S. of eqn 17 to obtain the estimate of the latest time step
+ */
+void Solver::solve_var(float force, int s, float mass, fvec& vars)
 {
-    vars(s) = force/_M*powf(_dt, 2) + 2*vars(s-1) - vars(s-2);
+    vars(s) = force/mass*powf(_dt, 2) + 2*vars(s-1) - vars(s-2);
+}
+
+/*
+ Integrand of eqn 17b
+ */
+fmat Solver::compute_theta1_integrand(fmat& pressure)
+{
+    fmat row_a = conv_to<fmat>::from(linspace(_da, 2.0f*M_PI, _n)).transform([](float val) { return (cosf(val));}).t();
+    fmat col_r = conv_to<fmat>::from(linspace(_dr, _R, _m));
+    fmat integrad = col_r*row_a - _x_c;
+    
+    // element-wise multiplication
+    return integrad%pressure;
+}
+
+void Solver::save_neumann_indices(std::string fileName)
+{
+    vec indices(_neumann_indice_count);
+    int k = 0;
+    for(int i: _neumann_indices)
+    {
+        indices(k++) = i;
+    }
+    indices.save(fileName, csv_ascii);
+}
+
+void Solver::print()
+{
+    _A->print("A:");
+    _b->t().print("b:");
+}
+
+void Solver::save()
+{
+    _A->save("/Users/kevinliu/Documents/cpp_proj/Numerics/Numerics/A.csv", csv_ascii);
+    _b->save("/Users/kevinliu/Documents/cpp_proj/Numerics/Numerics/b.csv", csv_ascii);
 }
 
 void const Solver::save_h(std::string file_name)
@@ -328,14 +435,3 @@ void const Solver::save_theta1(std::string file_name)
 {
     _theta1->save(file_name, csv_ascii);
 }
-
-fmat Solver::compute_theta1_integrand(fmat& pressure)
-{
-    fmat row_a = conv_to<fmat>::from(linspace(_da, 2.0f*M_PI, _n)).transform([](float val) { return (cosf(val));}).t();
-    fmat col_r = conv_to<fmat>::from(linspace(_dr, _R, _m));
-    fmat integrad = col_r*row_a - _x_c;
-    
-    // element-wise multiplication
-    return integrad%pressure;
-}
-
