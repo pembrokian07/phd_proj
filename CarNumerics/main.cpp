@@ -17,13 +17,13 @@ int main(int argc, const char * argv[]) {
     time_t t1 = 0;
     time_t t2 = 0;
     
-    string dir = "/Users/kevinliu/temp/NumericsData4/";
+    string dir = "/Users/kevinliu/temp/NumericsData/";
     
     cout<<"running..."<<endl;
     t1 = time(0);
     int m = 100;
     int n = 200;
-    int T = 2;
+    int T = 10;
     int v = 1;
     // body mass
     float M = 1.0f;
@@ -37,8 +37,7 @@ int main(int argc, const char * argv[]) {
     for(float q = 1.0f; q<=1.0f; q=q+0.5f)
     {
         cout << "q: " << q << endl;
-        
-        Solver s(m, n, T, 0.1f, q, M, J1, J2, 0.0f, 0.0f,(float) 0.0f, 0.0f, 0.0f, 0.0f);
+        Solver s(m, n, T, 0.1f, q, 0.0f, 0.0f,(float) 0.0f, 0.0f, 0.0f, 0.0f);
         fmat psi(m, n);
         fmat pressure(m,n);
         fmat theta1_integrand(m,n);
@@ -66,8 +65,7 @@ int main(int argc, const char * argv[]) {
             s.solve_var(h_force, t+1, M, *(s._h));
             
             // save h
-            //cout<< "h lift:" << h_force << endl;
-            
+            cout<< "h lift:" << h_force << endl;
             // solve for theta1
             theta1_integrand = s.compute_theta1_integrand(pressure);
             theta1_force = s.double_integral(theta1_integrand);
@@ -75,7 +73,7 @@ int main(int argc, const char * argv[]) {
             
             // save theta1
             //theta1_integrand.save(dir+"theta1_integrand.csv",csv_ascii);
-            //cout<< "theta1 force:" << theta1_force << endl;
+            cout<< "theta1 force:" << theta1_force << endl;
         }
         vec_h_force.push_back(h_force);
         vec_torque.push_back(theta1_force);
@@ -88,6 +86,8 @@ int main(int argc, const char * argv[]) {
 
         s.save_h(dir+"h_" + to_string(v) +".csv");
         s.save_theta1(dir+"theta_A_" + to_string(v) + ".csv");
+        
+        //s.save(dir);
         
         v++;
     }

@@ -5,8 +5,12 @@
 //
 
 #include "Solver.hpp"
+#include <format>
 
 using namespace arma;
+
+Solver::Solver(int m, int n, int t, float dt, float q):Solver(m, n, t, dt, q, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+{}
 
 /*
  Initialises the elliptical grid and starting values of our numerical system.
@@ -22,8 +26,8 @@ using namespace arma;
  @param theta1, d_theta1: starting value of theta1 and its angular velocity
  @param theta2, d_theta2: starting value of theta2 and its angular velocity
  */
-Solver::Solver(int m, int n, int t, float dt, float q, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2)
-    :_m(m),_n(n),_t(t),_dt(dt),_M(M),_I1(I1), _I2(I2)
+Solver::Solver(int m, int n, int t, float dt, float q, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2)
+    :_m(m),_n(n),_t(t),_dt(dt)
 {
     _dr = _R/_m;
     _da = (float) (2.0f*M_PI/_n);
@@ -62,7 +66,7 @@ Solver::Solver(int m, int n, int t, float dt, float q, float M, float I1, float 
     boost::push_back(full_set, boost::irange(0, _n));
     std::set_difference(full_set.begin(), full_set.end(), _neumann_indices.begin(), _neumann_indices.end(), std::inserter(_dirichlet_indices, _dirichlet_indices.begin()));
     
-    //boost::push_back(_neumann_indices, boost::irange(0,_n));
+    boost::push_back(_neumann_indices, boost::irange(0,_n));
 }
 
 Solver::~Solver()
@@ -414,16 +418,10 @@ void Solver::save_neumann_indices(std::string fileName)
     indices.save(fileName, csv_ascii);
 }
 
-void Solver::print()
+void Solver::save(std::string dir_name)
 {
-    _A->print("A:");
-    _b->t().print("b:");
-}
-
-void Solver::save()
-{
-    _A->save("/Users/kevinliu/Documents/cpp_proj/Numerics/Numerics/A.csv", csv_ascii);
-    _b->save("/Users/kevinliu/Documents/cpp_proj/Numerics/Numerics/b.csv", csv_ascii);
+    _A->save(dir_name.append("A.csv"), csv_ascii);
+    _b->save(dir_name.append("b.csv"), csv_ascii);
 }
 
 void const Solver::save_h(std::string file_name)
@@ -434,4 +432,5 @@ void const Solver::save_h(std::string file_name)
 void const Solver::save_theta1(std::string file_name)
 {
     _theta1->save(file_name, csv_ascii);
+    std::cout << _theta1 <<std::endl;
 }

@@ -7,31 +7,29 @@
 #ifndef Solver_hpp
 #define Solver_hpp
 
-#define ARMA_DONT_USE_WRAPPER
-#define ARMA_USE_BLAS
-#define ARMA_USE_LAPACK
+#define ARMA_USE_SUPERLU
 #define ARMA_USE_HDF5
-#define ARMA_USE_SUPERLU 1
 
 #include <vector>
 #include <algorithm>
 #include <iterator>
 #include <iostream>
 #include <cmath>
+#include <boost/range/irange.hpp>
+#include <boost/range/algorithm_ext/push_back.hpp>
 #include <armadillo>
-#include "boost/range/irange.hpp"
-#include "boost/range/algorithm_ext/push_back.hpp"
 
 using namespace arma;
 
 class Solver
 {
 public:
-    Solver(int m, int n, int t, float dt, float q, float M, float I1, float I2, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
+    Solver(int m, int n, int t, float dt, float q);
+    Solver(int m, int n, int t, float dt, float q, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
     ~Solver();
     void reset();
     float df_dx(int i, int j, int s);
-    void save();
+    void save(std::string dir_name);
     
     fmat solve_psi();
     fvec solve_origin(fmat& psi);
@@ -55,9 +53,7 @@ public:
     void populate_neumann();
     void populate_neumann2();
     float dirichlet_bc(int j);
-    float neumann_bc(int j);
-    
-    void print();
+    float neumann_bc(int j);    
     void save_neumann_indices(std::string fileName);
     
     fvec *_h;
@@ -70,9 +66,6 @@ private:
     const float _y_c = 0.0f;
     float _P;
     float _inv_P2;
-    float _M;
-    float _I1;
-    float _I2;
     int _m;
     int _n;
     int _t;
