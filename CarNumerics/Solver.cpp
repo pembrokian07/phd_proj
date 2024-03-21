@@ -1,11 +1,15 @@
 //
 //  Solver.cpp
 //
-//  Created by Kevin Liu on 08/11/2020.
-//
 
 #include "Solver.hpp"
 #include <format>
+#include <cmath>
+#include <boost/range/irange.hpp>
+#include <boost/range/algorithm_ext/push_back.hpp>
+#include <algorithm>
+#include <iterator>
+#include <iostream>
 
 using namespace arma;
 
@@ -19,8 +23,6 @@ Solver::Solver(int m, int n, int t, float dt, float q):Solver(m, n, t, dt, q, 0.
  @param n: no. of discretisation points for theta in elliptical coordinates
  @param t, dt: time and time discretisation step size
  @param q: ratio of the ellipse domain's two axes q = B/A (see eqn 30)
- @param M: scaled body mass
- @param I1, I2: scaled moments of inertia w.r.t. theta1, theta2
  @param h0: starting vertical height of the body
  @param v0: starting vertical velocity of the body
  @param theta1, d_theta1: starting value of theta1 and its angular velocity
@@ -34,8 +36,7 @@ Solver::Solver(int m, int n, int t, float dt, float q, float h0, float v0, float
     _P = q;
     _inv_P2 = powf(_P, -2.0f);
     
-    // number of unknowns to solve
-    _neumann_indice_count = (int)round(_n/2.0f)-1;
+    // number of unknowns to solve    
     _d = _m*_n;
     _A = new sp_fmat(_d, _d);
     _A->zeros();
@@ -55,10 +56,7 @@ Solver::Solver(int m, int n, int t, float dt, float q, float h0, float v0, float
     _theta2->at(0) = theta2 - d_theta2*_dt;
     _theta2->at(1) = theta2;
     
-    cout<<"dr: "<<_dr<<endl;
-    cout<<"da: "<<_da<<endl;
-    
-    boost::push_back(_neumann_indices, boost::irange(0, (int) round(_n/4.0f)));
+    boost::push_back(_neumann_indices, boost::irange(0, (int)round(_n/4.0f)));
     boost::push_back(_neumann_indices, boost::irange((int)round(3.0f/4*_n) + 1, _n));
     
     // populate the dirichlet indices
@@ -73,6 +71,9 @@ Solver::~Solver()
 {
     delete _A;
     delete _b;
+    delete _h;
+    delete _theta1;
+    delete _theta2;
 }
 
 void Solver::reset()
@@ -107,19 +108,21 @@ void Solver::_set_inner_eqns(int i, int j, int s)
     float c3 = (1 - _inv_P2)*sinf(2*alpha)/_da;
     
     // setting the k-th equation
-    (*_A)(k,k) = -2.0f*(c1 + c2*inv_da2);
-    (*_A)(k,i*_n+p_j(j+1)) = inv_da2*c2 + c3/(2.0f*powf(i+1, 2.0f));
-    (*_A)(k,i*_n+p_j(j-1)) = inv_da2*c2 - c3/(2.0f*powf(i+1, 2.0f));
+    _A->at(k,k) = -2.0f*(c1 + c2*inv_da2);
+    //this->_A->(k,k) = -2.0f*(c1 + c2*inv_da2);
+    //_A->at(k,k) = -2.0f*(c1 + c2*inv_da2);
+    _A->at(k,i*_n+p_j(j+1)) = inv_da2*c2 + c3/(2.0f*powf(i+1, 2.0f));
+    _A->at(k,i*_n+p_j(j-1)) = inv_da2*c2 - c3/(2.0f*powf(i+1, 2.0f));
     
     // when we increment dr we may step onto the boundary, so need to check
-    (*_A)(k,(i+1)*_n+j) = c1 + c2/(2*(i+1));
-    (*_A)(k,(i-1)*_n+j) = c1 - c2/(2*(i+1));
-    (*_A)(k,(i+1)*_n+ p_j(j+1)) = -c3/(4.0f*(i+1));
-    (*_A)(k,(i+1)*_n+ p_j(j-1)) = c3/(4.0f*(i+1));
-    (*_A)(k,(i-1)*_n+ p_j(j+1)) = c3/(4.0f*(i+1));
-    (*_A)(k,(i-1)*_n+ p_j(j-1)) = -c3/(4.0f*(i+1));
+    _A->at(k,(i+1)*_n+j) = c1 + c2/(2*(i+1));
+    _A->at(k,(i-1)*_n+j) = c1 - c2/(2*(i+1));
+    _A->at(k,(i+1)*_n+ p_j(j+1)) = -c3/(4.0f*(i+1));
+    _A->at(k,(i+1)*_n+ p_j(j-1)) = c3/(4.0f*(i+1));
+    _A->at(k,(i-1)*_n+ p_j(j+1)) = c3/(4.0f*(i+1));
+    _A->at(k,(i-1)*_n+ p_j(j-1)) = -c3/(4.0f*(i+1));
 
-    (*_b)(k) = -powf(_dr, 2.0f)*df_dx(i, j, s);
+    _b->at(k) = -powf(_dr, 2.0f)*df_dx(i, j, s);
 }
 
 /*
@@ -136,18 +139,18 @@ void Solver::populate_neumann()
         int r = i*_n;
         int k = r+p_j(j);
         
-        (*_A)(k,k) = 25.0f/12.0f*cosf(alpha);
-        (*_A)(k,r+p_j(j+1)) = -2.0f/3.0f*ita;
-        (*_A)(k,r+p_j(j+2)) = 1.0f/12.0f*ita;
-        (*_A)(k,r+p_j(j-1)) = 2.0f/3.0f*ita;
-        (*_A)(k,r+p_j(j-2)) = -1.0f/12.0f*ita;
+        _A->at(k,k) = 25.0f/12.0f*cosf(alpha);
+        _A->at(k,r+p_j(j+1)) = -2.0f/3.0f*ita;
+        _A->at(k,r+p_j(j+2)) = 1.0f/12.0f*ita;
+        _A->at(k,r+p_j(j-1)) = 2.0f/3.0f*ita;
+        _A->at(k,r+p_j(j-2)) = -1.0f/12.0f*ita;
         
-        (*_A)(k,(i-1)*_n + j) = -4.0f*cosf(alpha);
-        (*_A)(k,(i-2)*_n + j) = 3.0f*cosf(alpha);
-        (*_A)(k,(i-3)*_n + j) = -4.0f/3.0f*cosf(alpha);
-        (*_A)(k,(i-4)*_n + j) = 1.0f/4.0f*cosf(alpha);
+        _A->at(k,(i-1)*_n + j) = -4.0f*cosf(alpha);
+        _A->at(k,(i-2)*_n + j) = 3.0f*cosf(alpha);
+        _A->at(k,(i-3)*_n + j) = -4.0f/3.0f*cosf(alpha);
+        _A->at(k,(i-4)*_n + j) = 1.0f/4.0f*cosf(alpha);
         
-        (*_b)(k) = 0.0f; //_m*powf(_dr, 2.0f)
+        _b->at(k) = 0.0f; //_m*powf(_dr, 2.0f)
     }
 }
 
@@ -163,8 +166,8 @@ void Solver::populate_dirichlet()
         int r = i*_n;
         int k = r + j;
         
-        (*_A)(k,k) = 1;
-        (*_b)(k) = 0.0f;
+        _A->at(k,k) = 1;
+        _b->at(k) = 0.0f;
     }
 }
 
@@ -185,20 +188,20 @@ void Solver::populate_origin(int s)
         float c2 = powf(sinf(alpha), 2.0f) + powf(cosf(alpha), 2.0f)*_inv_P2;
         float c3 = (1 - _inv_P2)*sinf(2*alpha)/_da;
         
-        (*_A)(j,_n+j) = 0.5f*(c1+1.5f*c2);
-        (*_A)(j,_n+p_j(j + round(_n/2.0f))) = 1.0f/6*(c1 - 0.5f*c2);
-        (*_A)(j,_n+p_j(j-1+round(_n/2.0f))) = -c3/24.0f;
-        (*_A)(j,_n+p_j(j+1+round(_n/2.0f))) = c3/24.0f;
+        _A->at(j,_n+j) = 0.5f*(c1+1.5f*c2);
+        _A->at(j,_n+p_j(j + round(_n/2.0f))) = 1.0f/6*(c1 - 0.5f*c2);
+        _A->at(j,_n+p_j(j-1+round(_n/2.0f))) = -c3/24.0f;
+        _A->at(j,_n+p_j(j+1+round(_n/2.0f))) = c3/24.0f;
         
-        (*_A)(j,_n+p_j(j+1)) = -3.0f/8*c3;
-        (*_A)(j,_n+p_j(j-1)) = 3.0f/8*c3;
+        _A->at(j,_n+p_j(j+1)) = -3.0f/8*c3;
+        _A->at(j,_n+p_j(j-1)) = 3.0f/8*c3;
         
         
-        (*_A)(j,j) = -2.0f/3*c2 -2*inv_da2*c2 - 2.0f/3*c1;
-        (*_A)(j,p_j(j-1)) = c2*inv_da2 - 5.0f/6*c3;
-        (*_A)(j,p_j(j+1)) = c2*inv_da2 + 5.0f/6*c3;
+        _A->at(j,j) = -2.0f/3*c2 -2*inv_da2*c2 - 2.0f/3*c1;
+        _A->at(j,p_j(j-1)) = c2*inv_da2 - 5.0f/6*c3;
+        _A->at(j,p_j(j+1)) = c2*inv_da2 + 5.0f/6*c3;
 
-        (*_b)(j) = -powf(_dr, 2.0f)*df_dx(0, j, s);
+        _b->at(j) = -powf(_dr, 2.0f)*df_dx(0, j, s);
     }
 }
 
@@ -215,7 +218,7 @@ float Solver::df_dx(int i, int j, int s)
     float alpha = p_j(j+1)*_da;
     float a = (i+1)*_dr;
     float x = a*cosf(alpha);
-    float y = _P*a*sinf(alpha);
+    //float y = _P*a*sinf(alpha);
     return 2*x+ _theta1->at(s);
 }
 
@@ -407,17 +410,6 @@ fmat Solver::compute_theta1_integrand(fmat& pressure)
     return integrad%pressure;
 }
 
-void Solver::save_neumann_indices(std::string fileName)
-{
-    vec indices(_neumann_indice_count);
-    int k = 0;
-    for(int i: _neumann_indices)
-    {
-        indices(k++) = i;
-    }
-    indices.save(fileName, csv_ascii);
-}
-
 void Solver::save(std::string dir_name)
 {
     _A->save(dir_name.append("A.csv"), csv_ascii);
@@ -432,5 +424,5 @@ void const Solver::save_h(std::string file_name)
 void const Solver::save_theta1(std::string file_name)
 {
     _theta1->save(file_name, csv_ascii);
-    std::cout << _theta1 <<std::endl;
+    //std::cout << _theta1 <<std::endl;
 }

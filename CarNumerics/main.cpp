@@ -24,20 +24,19 @@ int main(int argc, const char * argv[]) {
     int m = 100;
     int n = 200;
     int T = 10;
-    int v = 1;
     // body mass
     float M = 1.0f;
     // moment of inertia j1
     float J1 = 1.0f;
     // moment of inertia j2
-    float J2 = 1.0f;
+    //float J2 = 1.0f;
     
     vector<float> vec_h_force;
     vector<float> vec_torque;
     for(float q = 1.0f; q<=1.0f; q=q+0.5f)
     {
         cout << "q: " << q << endl;
-        Solver s(m, n, T, 0.1f, q, 0.0f, 0.0f,(float) 0.0f, 0.0f, 0.0f, 0.0f);
+        Solver s(m, n, T, 0.1f, q, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         fmat psi(m, n);
         fmat pressure(m,n);
         fmat theta1_integrand(m,n);
@@ -78,18 +77,16 @@ int main(int argc, const char * argv[]) {
         vec_h_force.push_back(h_force);
         vec_torque.push_back(theta1_force);
         
-        psi.save(dir+"psi_" + to_string(v) +".csv", csv_ascii);
-        psi0.save(dir+"psi0_" + to_string(v) + ".csv", csv_ascii);
-        pressure.save(dir+"pressure_" + to_string(v) +".csv",csv_ascii);
-        vel_u.save(dir+"vel_u_" + to_string(v) +".csv",csv_ascii);
-        vel_v.save(dir+"vel_v_" + to_string(v) +".csv",csv_ascii);
+        psi.save(dir+"psi_" + to_string(q) +".csv", csv_ascii);
+        psi0.save(dir+"psi0_" + to_string(q) + ".csv", csv_ascii);
+        pressure.save(dir+"pressure_" + to_string(q) +".csv",csv_ascii);
+        vel_u.save(dir+"vel_u_" + to_string(q) +".csv",csv_ascii);
+        vel_v.save(dir+"vel_v_" + to_string(q) +".csv",csv_ascii);
 
-        s.save_h(dir+"h_" + to_string(v) +".csv");
-        s.save_theta1(dir+"theta_A_" + to_string(v) + ".csv");
+        s.save_h(dir+"h_" + to_string(q) +".csv");
+        s.save_theta1(dir+"theta_A_" + to_string(q) + ".csv");
         
         //s.save(dir);
-        
-        v++;
     }
 
     cout << "h force:" << endl;

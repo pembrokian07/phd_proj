@@ -11,12 +11,6 @@
 #define ARMA_USE_HDF5
 
 #include <vector>
-#include <algorithm>
-#include <iterator>
-#include <iostream>
-#include <cmath>
-#include <boost/range/irange.hpp>
-#include <boost/range/algorithm_ext/push_back.hpp>
 #include <armadillo>
 
 using namespace arma;
@@ -54,7 +48,6 @@ public:
     void populate_neumann2();
     float dirichlet_bc(int j);
     float neumann_bc(int j);    
-    void save_neumann_indices(std::string fileName);
     
     fvec *_h;
     fvec *_theta1;
@@ -72,8 +65,7 @@ private:
     int _d;
     float _dr;
     float _da;
-    float _dt;
-    int _neumann_indice_count;
+    float _dt;    
     
     sp_fmat *_A;
     fvec *_b;
