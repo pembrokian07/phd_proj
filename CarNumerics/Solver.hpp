@@ -18,11 +18,11 @@ using namespace arma;
 class Solver
 {
 public:
-    Solver(int m, int n, int t, float dt, float q);
-    Solver(int m, int n, int t, float dt, float q, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
+    Solver(int m, int n, int t, float dt, float q, float omega);
+    Solver(int m, int n, int t, float dt, float q, float omega, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2);
     ~Solver();
     void reset();
-    float df_dx(int i, int j, int s);
+    float dFunc_dx(int i, int j, int s);
     void save(std::string dir_name);
     
     fmat solve_psi();
@@ -33,6 +33,7 @@ public:
     fmat solve_velocity_u(fmat& psi);
     fmat solve_velocity_v(fmat& psi);
     float double_integral(fmat& f);
+    void set_body_g_params(float A, float B, float C);
     
     void solve_var(float force, int s, float mass, fvec& vars);
     void const save_h(std::string file_name);
@@ -57,6 +58,7 @@ private:
     const float _R = 1.0f;
     const float _x_c = 0.0f;
     const float _y_c = 0.0f;
+    float _omega;
     float _P;
     float _inv_P2;
     int _m;
@@ -65,7 +67,10 @@ private:
     int _d;
     float _dr;
     float _da;
-    float _dt;    
+    float _dt;
+    float _g_A;
+    float _g_B;
+    float _g_C;
     
     sp_fmat *_A;
     fvec *_b;

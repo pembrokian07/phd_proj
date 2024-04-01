@@ -13,7 +13,7 @@
 
 using namespace arma;
 
-Solver::Solver(int m, int n, int t, float dt, float q):Solver(m, n, t, dt, q, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+Solver::Solver(int m, int n, int t, float dt, float q, float omega):Solver(m, n, t, dt, q, omega, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
 {}
 
 /*
@@ -23,13 +23,14 @@ Solver::Solver(int m, int n, int t, float dt, float q):Solver(m, n, t, dt, q, 0.
  @param n: no. of discretisation points for theta in elliptical coordinates
  @param t, dt: time and time discretisation step size
  @param q: ratio of the ellipse domain's two axes q = B/A (see eqn 30)
+ @param omega: rotation speed of theta2
  @param h0: starting vertical height of the body
  @param v0: starting vertical velocity of the body
  @param theta1, d_theta1: starting value of theta1 and its angular velocity
  @param theta2, d_theta2: starting value of theta2 and its angular velocity
  */
-Solver::Solver(int m, int n, int t, float dt, float q, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2)
-    :_m(m),_n(n),_t(t),_dt(dt)
+Solver::Solver(int m, int n, int t, float dt, float q, float omega, float h0, float v0, float theta1, float d_theta1, float theta2, float d_theta2)
+    :_m(m),_n(n),_t(t),_dt(dt),_omega(omega)
 {
     _dr = _R/_m;
     _da = (float) (2.0f*M_PI/_n);
@@ -74,6 +75,13 @@ Solver::~Solver()
     delete _h;
     delete _theta1;
     delete _theta2;
+}
+
+void Solver::set_body_g_params(float A, float B, float C)
+{
+    _g_A = A;
+    _g_B = B;
+    _g_C = C;
 }
 
 void Solver::reset()
@@ -122,7 +130,7 @@ void Solver::_set_inner_eqns(int i, int j, int s)
     _A->at(k,(i-1)*_n+ p_j(j+1)) = c3/(4.0f*(i+1));
     _A->at(k,(i-1)*_n+ p_j(j-1)) = -c3/(4.0f*(i+1));
 
-    _b->at(k) = -powf(_dr, 2.0f)*df_dx(i, j, s);
+    _b->at(k) = -powf(_dr, 2.0f)*dFunc_dx(i, j, s);
 }
 
 /*
@@ -195,13 +203,12 @@ void Solver::populate_origin(int s)
         
         _A->at(j,_n+p_j(j+1)) = -3.0f/8*c3;
         _A->at(j,_n+p_j(j-1)) = 3.0f/8*c3;
-        
-        
+            
         _A->at(j,j) = -2.0f/3*c2 -2*inv_da2*c2 - 2.0f/3*c1;
         _A->at(j,p_j(j-1)) = c2*inv_da2 - 5.0f/6*c3;
         _A->at(j,p_j(j+1)) = c2*inv_da2 + 5.0f/6*c3;
 
-        _b->at(j) = -powf(_dr, 2.0f)*df_dx(0, j, s);
+        _b->at(j) = -powf(_dr, 2.0f)*dFunc_dx(0, j, s);
     }
 }
 
@@ -213,13 +220,20 @@ void Solver::populate_origin(int s)
  @param j: index of elliptical coordinate where j*d_a = a
  @param s: time step index, i.e. theta_1(s) if the body function 'f' depends on theta_1.
  */
-float Solver::df_dx(int i, int j, int s)
+float Solver::dFunc_dx(int i, int j, int s)
 {
     float alpha = p_j(j+1)*_da;
     float a = (i+1)*_dr;
     float x = a*cosf(alpha);
+    float y = _P*a*sinf(alpha);
+    float phi = _omega*s*_dt;
+    float ct = cosf(phi);
+    float st = sinf(phi);
     //float y = _P*a*sinf(alpha);
-    return 2*x+ _theta1->at(s);
+    float g_shape = powf(x - ct*_g_A + st*_g_B, 2.0f) + powf(y - ct*_g_B - st*_g_A,2.0f) - powf(_g_C, 2.0f);
+    float dg_dx = g_shape < 0 ? (x-cosf(phi)*_g_A + sinf(phi)*_g_B) : 0;
+    return 2*dg_dx + _theta1->at(s);
+    //return 2*x + _theta1->at(s);
 }
 
 // round angle index between d_alpha and 2*pi
