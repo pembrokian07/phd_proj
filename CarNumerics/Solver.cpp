@@ -64,8 +64,6 @@ Solver::Solver(int m, int n, int t, float dt, float q, float omega, float h0, fl
     std::vector<int> full_set;
     boost::push_back(full_set, boost::irange(0, _n));
     std::set_difference(full_set.begin(), full_set.end(), _neumann_indices.begin(), _neumann_indices.end(), std::inserter(_dirichlet_indices, _dirichlet_indices.begin()));
-    
-    boost::push_back(_neumann_indices, boost::irange(0,_n));
 }
 
 Solver::~Solver()

@@ -19,7 +19,7 @@ int main(int argc, const char * argv[]) {
     
     string dir = "/Users/kevinliu/temp/NumericsData/";
     // version number, used to identify the saved csv files.
-    string version_info = "2";
+    string version_info = "5";
     
     cout<<"running..."<<endl;
     t1 = time(0);
@@ -27,13 +27,15 @@ int main(int argc, const char * argv[]) {
     int n = 200;
     float dt = 0.1;
     // number of dt to run
-    int N_t = 80;
+    int N_t = 50;
     // the elliptical axis ratio, q=1 is a circle
     float q = 1.0f;
     // body mass
-    float M = 2.0f;
+    float M = 1.0f;
+    //2.0f;
     // moment of inertia j1
-    float J1 = 0.3f;
+    float J1 = 1.0f;
+    //0.3f;
     // moment of inertia j2
     //float J2 = 1.0f;
     
@@ -50,7 +52,7 @@ int main(int argc, const char * argv[]) {
     vector<float> vec_torque;
 
     // omega used for g(x,y,t)
-    float omega = 3*M_PI;
+    float omega = 0;
     Solver s(m, n, N_t, dt, q, omega, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
     // set the g(x,y,t) function
     s.set_body_g_params(0.8, 0.1, 0.1);
