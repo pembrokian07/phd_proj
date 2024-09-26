@@ -23,7 +23,7 @@ int main(int argc, const char * argv[]) {
     
     cout<<"running..."<<endl;
     t1 = time(0);
-    int m = 100;
+    int m = 500;
     int n = 200;
     float dt = 0.1;
     // number of dt to run

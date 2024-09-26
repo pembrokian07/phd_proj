@@ -55,7 +55,7 @@ public:
     fvec *_theta2;
     
 private:
-    const float _R = 1.0f;
+    const float _R = 5.0f;
     const float _x_c = 0.0f;
     const float _y_c = 0.0f;
     float _omega;
