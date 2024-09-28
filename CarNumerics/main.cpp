@@ -17,7 +17,7 @@ int main(int argc, const char * argv[]) {
     time_t t1 = 0;
     time_t t2 = 0;
     
-    string dir = "/Users/kevinliu/temp/NumericsData/";
+    string dir = "/home/kevin/Documents/gitlab/phd_proj/CarNumerics/NumericsData/";
     
     cout<<"running..."<<endl;
     t1 = time(0);
@@ -87,7 +87,7 @@ int main(int argc, const char * argv[]) {
         s.save_h(dir+"h_" + to_string(v) +".csv");
         s.save_theta1(dir+"theta_A_" + to_string(v) + ".csv");
         
-        //s.save(dir);
+        // s.save(dir);
         
         v++;
     }
