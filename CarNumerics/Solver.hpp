@@ -7,8 +7,8 @@
 #ifndef Solver_hpp
 #define Solver_hpp
 
-#define ARMA_USE_SUPERLU
-#define ARMA_USE_HDF5
+// #define ARMA_USE_SUPERLU
+// #define ARMA_USE_HDF5
 
 #include <vector>
 #include <algorithm>
