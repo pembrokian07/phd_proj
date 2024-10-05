@@ -399,8 +399,10 @@ void Solver::solve_var(float force, int s, float mass, fvec& vars)
  */
 fmat Solver::compute_theta1_integrand(fmat& pressure)
 {
+    // since the pressure matrix is in polar coordinates, we need generate a set of matching 'x' points
     fmat row_a = conv_to<fmat>::from(linspace(_da, 2.0f*M_PI, _n)).transform([](float val) { return (cosf(val));}).t();
     fmat col_r = conv_to<fmat>::from(linspace(_dr, _R, _m));
+    // i.e. col_r * row_a = x
     fmat integrad = col_r*row_a - _x_c;
     
     // element-wise multiplication

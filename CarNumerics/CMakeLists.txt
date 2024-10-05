@@ -6,6 +6,7 @@ include_directories(${ARMADILLO_INCLUDE_DIRS})
 
 add_executable(CarNumerics Solver.cpp main.cpp)
 
+add_compile_options(-fopenmp)
 target_link_libraries (CarNumerics ${ARMADILLO_LIBRARIES})
 
 include(CTest)
